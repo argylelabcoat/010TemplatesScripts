@@ -1,0 +1,92 @@
+//------------------------------------------------
+//--- 010 Editor v11.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+
+typedef enum <char> { 
+    TYPE_NORMAL       = '0',
+    TYPE_HARD_LINK    = '1',
+    TYPE_SYM_LINK     = '2',
+    TYPE_CHAR_SPEC    = '3',
+    TYPE_BLOCK_SPEC   = '4',
+    TYPE_DIRECTORY    = '5',
+    TYPE_FIFO         = '6',
+    TYPE_CONTIGUOUS   = '7',
+    TYPE_G_EXT_HEAD   = '8',
+    TYPE_X_EXT_HEAD   = '9'    
+} TAR_HEAD_TYPE;
+
+typedef struct {
+    // Header for the file
+    char     filename[100];    //0x04034b50
+    uint64   filemode;
+    char     ownerUID[8];
+    char     ownerGID[8];
+    char     filesize[12] <format=octal>;
+    char     lastModified[12] <format=octal>;
+    uint64   headerChecksum <format=hex>;
+    TAR_HEAD_TYPE     type;
+    char     linkName[100];
+    char     magic[6]; // 'ustar\0'
+    char     version[2];
+    char     ownerUserName[32];
+    char     ownerGroupName[32];
+    char     deviceMajorNumber[8];
+    char     deviceMinorNumber[8];
+    char     filenamePrefix[155];
+    char     padding[12];
+
+} header;
+
+
+int m512(int input) {
+    local int div = input / 512;
+    if ( input % 512 > 0 ) {
+        ++div;
+    }
+    return div * 512;
+}
+
+local int i = 0;
+local int j = 0;
+local int size = 0;
+local int placeval = 0;
+local int placeExp = 1;
+while( !FEof() )
+{
+    if ( FileSize() - FTell() == 1024){
+        FSkip(1024);
+    } else {
+    
+        header tar_header;
+        size = 0;
+        placeExp = 1;
+        for ( i = 11; i >=0 ; --i ) {
+            if ( tar_header.filesize[i] >= '0' ) {
+                placeval = tar_header.filesize[i] - '0';
+                size += placeval * placeExp;
+            }
+            placeExp = 1;
+            for ( j = 0; j <= 11-i; ++j) {
+                if ( j == 1 ) {
+                    placeExp = 8;
+                } else {
+                    placeExp *= placeExp;
+                }
+            }
+        }
+        if (size>0) {
+            size = m512(size);
+        }
+        FSkip(size);   
+    }
+}
